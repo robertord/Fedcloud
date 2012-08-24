@@ -78,17 +78,44 @@ def menuLaunch(dataList):
 	print "\t\tLocation: ",machine["location"]
 	print "\t\tNetwork: ",machine["requires"]
 	i+=1
-    print "\n\t[",i,"] Exit."
+    print "\n\t[",i,"] Back."
     return i
 
 
+def menuMachines(machines):
+    os.system('clear')
+    print "\n\n\n"
+    i=0
+    for machine in machines:
+	if 'title' in machine:
+	    print "\t[",i,"] ",machine['title']," running in ",machine['endpoint']
+	if 'summary' in machine:
+	    print "\t\t",machine['summary']
+	if 'ip' in machine:
+	    print "\t\tIP:",machine['ip']
+	print "\t\tNumber of cores:",machine['cores']," Memory:",machine['memory']," Architecture:",machine['architecture']
+	if 'vncweb' in machine:
+	    print "\t\tVNC web link: ",machine['vncweb']
+	if 'vnc' in machine:
+	    print "\t\tVNC link: ",machine['vnc']
+	if 'occi_id' in machine:
+	    print "\t\tOCCI id: ",machine['occi_id']
+	print "\n"
+	i+=1
+    if len(machines)==0:
+	print "\n\t\tThere is not any machine running yet."
+    return i
+    
+
 def machineLaunch(metadataList, passw):
     numberMachines=menuLaunch(metadataList)
-    try:
-	key=int(raw_input('\n\t - Input one option above: '))
-    except ValueError:
-	print "*-*-* You must enter a number *-*-*"
+    key=-1
     while 1:	
+        try:
+	    key=int(raw_input('\n\t - Input one option above: '))
+	except ValueError:
+	    print "\n\t\t*-*-* You must enter a number *-*-*"
+	    
 	if key>=0 and key<numberMachines:
 	    print "\n\n ****** Launching machine ",metadataList[key]["location"]," ******\n"
 	    print " ****** Network ",metadataList[key]["requires"]," ******\n"
@@ -111,7 +138,7 @@ def machineLaunch(metadataList, passw):
 	    instantiate="curl --sslv3 --cert "+certpath+"/usercert.pem:"+passw+" --key "+certpath+"/userkey.pem -X POST -v "+endpoint[0]+"/compute/ --capath "+capath+" --header \'Link: "+comLink+"\' --header \'X-OCCI-Attribute: "+comAttribute+"\' --header \'Category: "+comCategory+"\'"
 	    print "Instantiate:",instantiate
 	    os.system(instantiate)
-	    raw_input('\n\tPress enter to continue')
+	    raw_input('\n\n\n\tPress enter to continue...')
 	    break
 	if key==numberMachines: 
 	    break
@@ -119,7 +146,8 @@ def machineLaunch(metadataList, passw):
 
 def machineList(metadataList, passw):
     os.system('clear')
-    print ("\n\n\n")
+    print "\n\n\n"
+    print "\t\tLooking for valid fedcloud machines running....\n"
     validMachines = []
     info = []
     for machine in metadataList:
@@ -160,38 +188,21 @@ def machineList(metadataList, passw):
 			info['occi_id']=m.replace("X-OCCI-Attribute: occi.core.id=","").replace("\"","")
 		if info['title'].find(machine["identifier"]) != -1:
 		    info['endpoint']=endpoint[0]
-		    validMachines.append(info)    
+		    validMachines.append(info)
     return validMachines
-
-
-def menuMachines(machines):
-    os.system('clear')
-    print ("\n\n\n")
-    i=0
-    for machine in machines:
-	print "\t[",i,"] ",machine['title']," running in ",machine['endpoint']
-	print "\t\t",machine['summary']
-	print "\t\tIP:",machine['ip']
-	print "\t\tNumber of cores:",machine['cores']," Memory:",machine['memory']," Architecture:",machine['architecture']
-	print "\t\tVNC web link: ",machine['vncweb']
-	print "\t\tVNC link: ",machine['vnc']
-	print "\t\tOCCI id: ",machine['occi_id']
-	print "\n"
-	i+=1
-    if len(machines)==0:
-	print "\n\t\tThere is not any machine running yet."
-    return i
 
 
 def machineDelete(machines):
     #TODO: check user dn and try to show only machines matching dn
     numberMachines=menuMachines(machines)
     print "\n\t[",numberMachines,"] Back."
-    try:
-	key=int(raw_input('\n\t - Input one option above: '))
-    except ValueError:
-	print "*-*-* You must enter a number *-*-*"
+    key=-1
     while True:	
+	try:
+	    key=int(raw_input('\n\t - Input one option above: '))
+	except ValueError:
+	    print "\n\t\t*-*-* You must enter a number *-*-*"
+	    
 	if key>=0 and key<numberMachines:
 	    print "\n\nDeleting machine: ", machines[key]['endpoint']+machines[key]['occi_id'],"\n\n"
 	    instantiate="curl --sslv3 --cert "+certpath+"/usercert.pem:"+passwd+" --key "+certpath+"/userkey.pem -X DELETE -v "+machines[key]['endpoint']+"/compute/"+machines[key]['occi_id']+" --capath "+capath
@@ -229,6 +240,7 @@ else:
     metadataList = _getMetadataInfo(sys.argv[1])
     passwd=loadCertPasswd()
     op = 1
+    key=-1
     while op>0 and op<5:
 	menuMain()
 	try:
