@@ -14,9 +14,9 @@ import stratuslab.Util as Util
 ###
 ### Define this variables to get your certificates
 #path for usercert.pem and userkey.pem files
-certpath="/path/for/usercert.pem/and/userkey.pem/files"
+certpath="~/.globus"
 #path for CA's files
-capath="path/for/CA's/files" 
+capath="/etc/grid-security/certificates/" 
 ###
 ###
 
