@@ -12,6 +12,6 @@ Before run it you must configure certpath and capath variables in script
  - capath="/etc/grid-security/certificates"
 
 Usage:
- $python fedcloud http://marketplace.egi.eu
+ $python fedcloud.py http://marketplace.egi.eu
 or 
- $./fedcloud http://marketplace.egi.eu 
+ $./fedcloud.py http://marketplace.egi.eu 
