@@ -16,7 +16,7 @@ import stratuslab.Util as Util
 #path for usercert.pem and userkey.pem files
 certpath="~/.globus"
 #path for CA's files
-capath="/etc/grid-security/certificates/" 
+capath="/etc/grid-security/certificates/"
 ###
 ###
 
@@ -110,20 +110,30 @@ def menuMachines(machines):
 def machineLaunch(metadataList, passw):
     numberMachines=menuLaunch(metadataList)
     key=-1
-    while 1:	
-        try:
-	    key=int(raw_input('\n\t - Input one option above: '))
+    #while 1:	
+        #try:
+	    #key=int(raw_input('\n\t - Input one option above: '))
+	#except ValueError:
+	    #print "\n\t\t*-*-* You must enter a number *-*-*"
+    numList=[]
+    numbs=raw_input("\n\t - Enter a list of number machine separated by commas (,) : ").split(",")
+    for i in numbs:
+	try:
+	    numbs2=int(i)
+	    numList.append(numbs2)
 	except ValueError:
-	    print "\n\t\t*-*-* You must enter a number *-*-*"
-	    
+	    print "\n\t - Value ",i," is incorrect. Ignoring ..."  
+	    raw_input('\n\n\n\tPress enter to continue...')
+
+    for key in numList:
 	if key>=0 and key<numberMachines:
-	    print "\n\n ****** Launching machine ",metadataList[key]["location"]," ******\n"
-	    print " ****** Network ",metadataList[key]["requires"]," ******\n"
+	    print "\n\n ****** Launching machine ",metadataList[key]["location"],"\n"
+	    print " ****** Network ",metadataList[key]["requires"],"\n"
 	    #compute value is not present in xml info, so it must be calculate from location or requires
 	    pat = re.compile(r'http[s]{0,1}://[a-z].[a-z][a-z.0-9]*:[0-9]+')
 	    endpoint = re.findall(pat,metadataList[key]["location"])
 	    print " ****** Compute: ",endpoint[0]
-	    
+		
 	    #create necessary values for curl command
 	    comCategory = 'compute;scheme="http://schemas.ogf.org/occi/infrastructure#";class="kind";'	    
 	    comAttribute = "occi.core.title="+"\"FedCloud Testing:"+metadataList[key]["identifier"]+"\","
@@ -134,12 +144,22 @@ def machineLaunch(metadataList, passw):
 
 	    comLink = "<"+metadataList[key]["requires"].replace(endpoint[0],'')+">"+";rel=\"http://schemas.ogf.org/occi/infrastructure#network\";category=\"http://schemas.ogf.org/occi/core#link\";,"
 	    comLink += "<"+metadataList[key]["location"].replace(endpoint[0],'')+">"+";rel=\"http://schemas.ogf.org/occi/infrastructure#storage\";category=\"http://schemas.ogf.org/occi/core#link\";"
+		
+	    instantiate="curl -s --sslv3 --cert "+certpath+"/usercert.pem:"+passw+" --key "+certpath+"/userkey.pem -X POST -v "+endpoint[0]+"/compute/ --capath "+capath+" --header \'Link: "+comLink+"\' --header \'X-OCCI-Attribute: "+comAttribute+"\' --header \'Category: "+comCategory+"\'"
+	    status, result = commands.getstatusoutput(instantiate)
 	    
-	    instantiate="curl --sslv3 --cert "+certpath+"/usercert.pem:"+passw+" --key "+certpath+"/userkey.pem -X POST -v "+endpoint[0]+"/compute/ --capath "+capath+" --header \'Link: "+comLink+"\' --header \'X-OCCI-Attribute: "+comAttribute+"\' --header \'Category: "+comCategory+"\'"
-	    print "Instantiate:",instantiate
-	    os.system(instantiate)
+	    if result.find('Status: 200') != -1:
+		if len(sys.argv)>=3 and sys.argv[2]=="debug":
+			print result
+		else:
+		    print "\n\n ****** Machine ",metadataList[key]["identifier"]," launched in ",endpoint[0]," correctly."
+		    pat = re.compile(r'http[s]{0,1}://[a-z].[a-z][a-z.0-9]*:[0-9]+[a-z.0-9/\-]*')
+		    link = re.findall(pat,result)
+		    print "\t  Link to machine: ",link[0]
+	    else: 
+		print "\n\t\tError launching selected machine."
 	    raw_input('\n\n\n\tPress enter to continue...')
-	    break
+		
 	if key==numberMachines: 
 	    break
 	    
@@ -197,18 +217,30 @@ def machineDelete(machines):
     numberMachines=menuMachines(machines)
     print "\n\t[",numberMachines,"] Back."
     key=-1
-    while True:	
+    numList=[]
+    numbs=raw_input("\n\t - Enter a list of number machine separated by commas (,) : ").split(",")
+    for i in numbs:
 	try:
-	    key=int(raw_input('\n\t - Input one option above: '))
+	    numbs2=int(i)
+	    numList.append(numbs2)
 	except ValueError:
-	    print "\n\t\t*-*-* You must enter a number *-*-*"
-	    
+	    print "\n\t - Value ",i," is incorrect. Ignoring ..."  
+	    raw_input('\n\n\n\tPress enter to continue...')  
+
+    for key in numList:
 	if key>=0 and key<numberMachines:
-	    print "\n\nDeleting machine: ", machines[key]['endpoint']+machines[key]['occi_id'],"\n\n"
-	    instantiate="curl --sslv3 --cert "+certpath+"/usercert.pem:"+passwd+" --key "+certpath+"/userkey.pem -X DELETE -v "+machines[key]['endpoint']+"/compute/"+machines[key]['occi_id']+" --capath "+capath
-	    os.system(instantiate)
+	    print "\n\nDeleting machine: ", machines[key]['endpoint']+machines[key]['occi_id']
+	    instantiate="curl -s --sslv3 --cert "+certpath+"/usercert.pem:"+passwd+" --key "+certpath+"/userkey.pem -X DELETE -v "+machines[key]['endpoint']+"/compute/"+machines[key]['occi_id']+" --capath "+capath
+	    status, result = commands.getstatusoutput(instantiate)
+	    
+	    if result.find('Status: 200') != -1:
+		if len(sys.argv)>=3 and sys.argv[2]=="debug":
+			print result
+		else:
+		    print "\n\n ****** Machine ",machines[key]['endpoint']+"/compute/"+machines[key]['occi_id']," deleted correctly."
+	    else: 
+		print "\n\t\tError deleting selected machine."
 	    raw_input('\n\tPress enter to continue')
-	    break
 	if key==numberMachines: 
 	    break
 	    
@@ -235,7 +267,7 @@ def loadCertPasswd():
     
 #main program
 if (len(sys.argv) < 2):
-    print "Usage: fedcloud.py <marketplace-endpoint>"
+    print "Usage: fedcloud.py <marketplace-endpoint> [debug]"
     print "Example: python fedcloud.py http://marketplace.egi.eu"
 else:
     metadataList = _getMetadataInfo(sys.argv[1])

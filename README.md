@@ -15,3 +15,7 @@ Usage:
  $python fedcloud.py http://marketplace.egi.eu
 or 
  $./fedcloud.py http://marketplace.egi.eu 
+For debug purposes:
+ $python fedcloud.py http://marketplace.egi.eu debug
+or 
+ $./fedcloud.py http://marketplace.egi.eu debug
