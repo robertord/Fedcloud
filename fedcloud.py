@@ -127,6 +127,7 @@ def machineLaunch(metadataList, passw):
 
     for key in numList:
 	if key>=0 and key<numberMachines:
+	    os.system('clear')
 	    print "\n\n ****** Launching machine ",metadataList[key]["location"],"\n"
 	    print " ****** Network ",metadataList[key]["requires"],"\n"
 	    #compute value is not present in xml info, so it must be calculate from location or requires
@@ -229,6 +230,7 @@ def machineDelete(machines):
 
     for key in numList:
 	if key>=0 and key<numberMachines:
+	    os.system('clear')
 	    print "\n\nDeleting machine: ", machines[key]['endpoint']+machines[key]['occi_id']
 	    instantiate="curl -s --sslv3 --cert "+certpath+"/usercert.pem:"+passwd+" --key "+certpath+"/userkey.pem -X DELETE -v "+machines[key]['endpoint']+"/compute/"+machines[key]['occi_id']+" --capath "+capath
 	    status, result = commands.getstatusoutput(instantiate)
