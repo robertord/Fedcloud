@@ -235,7 +235,8 @@ def loadCertPasswd():
     
 #main program
 if (len(sys.argv) < 2):
-    print "Usage: getmetadata.py <marketplace-endpoint>"
+    print "Usage: fedcloud.py <marketplace-endpoint>"
+    print "Example: python fedcloud.py http://marketplace.egi.eu"
 else:
     metadataList = _getMetadataInfo(sys.argv[1])
     passwd=loadCertPasswd()

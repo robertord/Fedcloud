@@ -11,3 +11,7 @@ Before run it you must configure certpath and capath variables in script
  - certpath="~/.globus"
  - capath="/etc/grid-security/certificates"
 
+Usage:
+ $python fedcloud http://marketplace.egi.eu
+or 
+ $./fedcloud http://marketplace.egi.eu 
