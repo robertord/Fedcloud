@@ -8,6 +8,6 @@ The instructions for this are on the webpage https://wiki.egi.eu/wiki/Fedcloud-t
 They point to the tar.gz, but there are also RPMs available in the yum repositories, see http://yum.stratuslab.eu/
 
 Before run it you must configure certpath and capath variables in script
- - certpath="/path/for/usercert.pem/and/userkey.pem/files"
- - capath="path/for/CA's/files" 
+ - certpath="~/.globus"
+ - capath="/etc/grid-security/certificates"
 
