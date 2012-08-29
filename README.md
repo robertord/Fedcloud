@@ -16,5 +16,12 @@ Usage:
  - $./fedcloud.py http://marketplace.egi.eu 
 
 For debug purposes:
- - $python fedcloud.py http://marketplace.egi.eu debug
- - $./fedcloud.py http://marketplace.egi.eu debug
+ - $python fedcloud.py http://marketplace.egi.eu --debug
+ - $./fedcloud.py http://marketplace.egi.eu --debug
+
+For untrusted hosts certificates:
+ - $python fedcloud.py http://marketplace.egi.eu --insecure=<site1,site2,site3,...>
+ - $./fedcloud.py http://marketplace.egi.eu --insecure=<site1,site2,site3,...>
+
+Example: 
+python fedcloud.py http://marketplace.egi.eu --insecure=kth.se,cesga --debug

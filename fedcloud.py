@@ -107,7 +107,7 @@ def menuMachines(machines):
     return i
     
 
-def machineLaunch(metadataList, passw):
+def machineLaunch(metadataList):
     numberMachines=menuLaunch(metadataList)
     key=-1
     #while 1:	
@@ -145,19 +145,28 @@ def machineLaunch(metadataList, passw):
 
 	    comLink = "<"+metadataList[key]["requires"].replace(endpoint[0],'')+">"+";rel=\"http://schemas.ogf.org/occi/infrastructure#network\";category=\"http://schemas.ogf.org/occi/core#link\";,"
 	    comLink += "<"+metadataList[key]["location"].replace(endpoint[0],'')+">"+";rel=\"http://schemas.ogf.org/occi/infrastructure#storage\";category=\"http://schemas.ogf.org/occi/core#link\";"
-		
-	    instantiate="curl -s --sslv3 --cert "+certpath+"/usercert.pem:"+passw+" --key "+certpath+"/userkey.pem -X POST -v "+endpoint[0]+"/compute/ --capath "+capath+" --header \'Link: "+comLink+"\' --header \'X-OCCI-Attribute: "+comAttribute+"\' --header \'Category: "+comCategory+"\'"
+	    
+	    found=0
+	    if len(insecures) > 0:
+		for site in insecures:
+		    if endpoint[0].find(site) != -1:
+			instantiate="curl -s --sslv3 --insecure --cert "+certpath+"/usercert.pem:"+passwd+" --key "+certpath+"/userkey.pem -X POST -v "+endpoint[0]+"/compute/ --header \'Link: "+comLink+"\' --header \'X-OCCI-Attribute: "+comAttribute+"\' --header \'Category: "+comCategory+"\'"
+			found = 1
+			break
+	    if found == 0:
+		instantiate="curl -s --sslv3 --cert "+certpath+"/usercert.pem:"+passwd+" --key "+certpath+"/userkey.pem -X POST -v "+endpoint[0]+"/compute/ --capath "+capath+" --header \'Link: "+comLink+"\' --header \'X-OCCI-Attribute: "+comAttribute+"\' --header \'Category: "+comCategory+"\'"
+	    
+	    if debug == 1: print "Launched:",instantiate.replace(passwd,"xxxxxx")
 	    status, result = commands.getstatusoutput(instantiate)
 	    
 	    if result.find('Status: 200') != -1:
-		if len(sys.argv)>=3 and sys.argv[2]=="debug":
-			print result
-		else:
-		    print "\n\n ****** Machine ",metadataList[key]["identifier"]," launched in ",endpoint[0]," correctly."
-		    pat = re.compile(r'http[s]{0,1}://[a-z].[a-z][a-z.0-9]*:[0-9]+[a-z.0-9/\-]*')
-		    link = re.findall(pat,result)
-		    print "\t  Link to machine: ",link[0]
+		if debug == 1: print result
+		print "\n\n ****** Machine ",metadataList[key]["identifier"]," launched in ",endpoint[0]," correctly."
+		pat = re.compile(r'http[s]{0,1}://[a-z].[a-z][a-z.0-9]*:[0-9]+[a-z.0-9/\-]*')
+		link = re.findall(pat,result)
+		print "\t  Link to machine: ",link[0]
 	    else: 
+		if debug == 1: print result
 		print "\n\t\tError launching selected machine."
 	    raw_input('\n\n\n\tPress enter to continue...')
 		
@@ -165,7 +174,7 @@ def machineLaunch(metadataList, passw):
 	    break
 	    
 
-def machineList(metadataList, passw):
+def machineList(metadataList):
     os.system('clear')
     print "\n\n\n"
     print "\t\tLooking for valid fedcloud machines running....\n"
@@ -176,14 +185,42 @@ def machineList(metadataList, passw):
 	endpoint = re.findall(pat,machine["location"])
 	#check that endpoint/compute has at least one "X-OCCI-Location:" running, else don't do nothing
 	#usefull also to check that user running script has appropiate cerficate
-	checkRunning = "curl -s --cert "+certpath+"/usercert.pem:"+passw+" --key "+certpath+"/userkey.pem "+endpoint[0]+"/compute/ --capath "+capath+" | awk \'{ print $1 }\'"
+	found=0
+	if len(insecures) > 0:
+	    for site in insecures:
+		if endpoint[0].find(site) != -1:
+		    checkRunning = "curl -s -sslv3 --insecure --cert "+certpath+"/usercert.pem:"+passwd+" --key "+certpath+"/userkey.pem "+endpoint[0]+"/compute/ | awk \'{ print $1 }\'"
+		    found = 1
+		    break
+	if found == 0:
+	    checkRunning = "curl -s --cert "+certpath+"/usercert.pem:"+passwd+" --key "+certpath+"/userkey.pem "+endpoint[0]+"/compute/ --capath "+capath+" | awk \'{ print $1 }\'"
+	if debug == 1: print "Launched:",checkRunning.replace(passwd,"xxxxxx")
 	status, checkResult = commands.getstatusoutput(checkRunning)
 	if checkResult.find("X-OCCI-Location:") != -1:
-	    runningMachines = "curl -s --insecure --cert "+certpath+"/usercert.pem:"+passw+" --key "+certpath+"/userkey.pem "+endpoint[0]+"/compute/ | awk \'{ print $2 }\'"
+	    
+	    found=0
+	    if len(insecures) > 0:
+		for site in insecures:
+		    if endpoint[0].find(site) != -1:
+			runningMachines = "curl -s --insecure --cert "+certpath+"/usercert.pem:"+passwd+" --key "+certpath+"/userkey.pem "+endpoint[0]+"/compute/ | awk \'{ print $2 }\'"
+			found = 1
+			break
+	    if found == 0:
+		runningMachines = "curl -s --cert "+certpath+"/usercert.pem:"+passwd+" --key "+certpath+"/userkey.pem "+endpoint[0]+"/compute/ --capath "+capath+" | awk \'{ print $2 }\'"
+	    if debug == 1: print "Launched:",runningMachines.replace(passwd,"xxxxxx")
 	    status, machines = commands.getstatusoutput(runningMachines)
 	    listMachines = machines.splitlines()
+	    
 	    for m in listMachines:
-		comm = "curl -s --insecure --cert "+certpath+"/usercert.pem:"+passw+" --key "+certpath+"/userkey.pem "+m
+		found=0
+		if len(insecures) > 0:
+		    for site in insecures:
+			if endpoint[0].find(site) != -1:
+			    comm = "curl -s --insecure --cert "+certpath+"/usercert.pem:"+passwd+" --key "+certpath+"/userkey.pem "+m
+			    found = 1
+			    break
+		if found == 0:
+		    comm = "curl -s --cert "+certpath+"/usercert.pem:"+passwd+" --key "+certpath+"/userkey.pem "+m
 		status, occiValues = commands.getstatusoutput(comm)
 		##only must be saved/showed valid machines for fedcloud or by user, attending occi values
 		machineValues = occiValues.splitlines()
@@ -232,15 +269,23 @@ def machineDelete(machines):
 	if key>=0 and key<numberMachines:
 	    os.system('clear')
 	    print "\n\nDeleting machine: ", machines[key]['endpoint']+machines[key]['occi_id']
-	    instantiate="curl -s --sslv3 --cert "+certpath+"/usercert.pem:"+passwd+" --key "+certpath+"/userkey.pem -X DELETE -v "+machines[key]['endpoint']+"/compute/"+machines[key]['occi_id']+" --capath "+capath
+	    found=0
+	    if len(insecures) > 0:
+		for site in insecures:
+		    if machines[key]['endpoint'].find(site) != -1:
+			instantiate="curl -s --sslv3 --insecure --cert "+certpath+"/usercert.pem:"+passwd+" --key "+certpath+"/userkey.pem -X DELETE -v "+machines[key]['endpoint']+"/compute/"+machines[key]['occi_id']
+			found = 1
+			break
+	    if found == 0:
+		instantiate="curl -s --sslv3 --cert "+certpath+"/usercert.pem:"+passwd+" --key "+certpath+"/userkey.pem -X DELETE -v "+machines[key]['endpoint']+"/compute/"+machines[key]['occi_id']+" --capath "+capath
+	    if debug == 1: print "Launched:",instantiate.replace(passwd,"xxxxxx")
 	    status, result = commands.getstatusoutput(instantiate)
 	    
 	    if result.find('Status: 200') != -1:
-		if len(sys.argv)>=3 and sys.argv[2]=="debug":
-			print result
-		else:
-		    print "\n\n ****** Machine ",machines[key]['endpoint']+"/compute/"+machines[key]['occi_id']," deleted correctly."
+		if debug == 1: print result
+		print "\n\n ****** Machine ",machines[key]['endpoint']+"/compute/"+machines[key]['occi_id']," deleted correctly."
 	    else: 
+		if debug == 1: print result
 		print "\n\t\tError deleting selected machine."
 	    raw_input('\n\tPress enter to continue')
 	if key==numberMachines: 
@@ -267,15 +312,38 @@ def loadCertPasswd():
     return p    
 
     
+    
+def usage():
+    print "\n\tUsage: fedcloud.py <marketplace-endpoint> [--insecure=<site1,site2,site3> [--debug]"
+    print "\t\tExample: python fedcloud.py http://marketplace.egi.eu --insecure=site1.com,site2.com --debug"
+    exit(1)    
+
+
 #main program
 if (len(sys.argv) < 2):
-    print "Usage: fedcloud.py <marketplace-endpoint> [debug]"
-    print "Example: python fedcloud.py http://marketplace.egi.eu"
+    usage()
 else:
+    #checking args passed
+    debug=0
+    insecures=[]
+    if len(sys.argv) > 2:
+	if sys.argv[2].find("--insecure=") != -1:
+	    insecures=sys.argv[2].replace("--insecure=","").split(",")
+	    if len(sys.argv) > 3:
+		if sys.argv[3] == "--debug":
+		    debug=1
+		else:
+		    usage()
+	else:
+	    if sys.argv[2] == "--debug":
+		debug=1
+	    else:
+		usage()
+    ## 
     metadataList = _getMetadataInfo(sys.argv[1])
     passwd=loadCertPasswd()
     op = 1
-    key=-1
+    key=-1    
     while op>0 and op<5:
 	menuMain()
 	try:
@@ -284,11 +352,11 @@ else:
 	    print "*-*-* You must enter a number *-*-*"
 	    continue
 	if key == 1:
-	    menuMachines(machineList(metadataList, passwd))
+	    menuMachines(machineList(metadataList))
 	    raw_input('\n\tPress enter to continue')
 	if key == 2:
-	    machineLaunch(metadataList, passwd)
+	    machineLaunch(metadataList)
 	if key == 3:
-	    machineDelete(machineList(metadataList, passwd))
+	    machineDelete(machineList(metadataList))
 	if key == 4:
 	    break
