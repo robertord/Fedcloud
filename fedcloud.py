@@ -220,7 +220,8 @@ def machineList(metadataList):
 			    found = 1
 			    break
 		if found == 0:
-		    comm = "curl -s --cert "+certpath+"/usercert.pem:"+passwd+" --key "+certpath+"/userkey.pem "+m
+		    comm = "curl -s --cert "+certpath+"/usercert.pem:"+passwd+" --key "+certpath+"/userkey.pem --capath "+capath+" "+m
+		if debug == 1: print "Launched:",comm.replace(passwd,"xxxxxx")
 		status, occiValues = commands.getstatusoutput(comm)
 		##only must be saved/showed valid machines for fedcloud or by user, attending occi values
 		machineValues = occiValues.splitlines()
