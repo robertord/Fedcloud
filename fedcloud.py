@@ -94,6 +94,8 @@ def menuMachines(machines):
 	if 'ip' in machine:
 	    print "\t\tIP:",machine['ip']
 	print "\t\tNumber of cores:",machine['cores']," Memory:",machine['memory']," Architecture:",machine['architecture']
+	if 'status' in machine:
+	    print "\t\tStatus: ",machine['status']
 	if 'vncweb' in machine:
 	    print "\t\tVNC web link: ",machine['vncweb']
 	if 'vnc' in machine:
@@ -245,6 +247,8 @@ def machineList(metadataList):
 			info['architecture']=m.replace("X-OCCI-Attribute: occi.compute.architecture=","").replace("\"","")
 		    if m.find("occi.core.id=") != -1:
 			info['occi_id']=m.replace("X-OCCI-Attribute: occi.core.id=","").replace("\"","")
+		    if m.find("occi.compute.state=") != -1:
+			info['status']=m.replace("X-OCCI-Attribute: occi.compute.state=","").replace("\"","")
 		if info['title'].find(machine["identifier"]) != -1:
 		    info['endpoint']=endpoint[0]
 		    validMachines.append(info)
