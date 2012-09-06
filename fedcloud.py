@@ -131,7 +131,7 @@ def machineLaunch(metadataList):
 	    print "\n\n ****** Launching machine ",metadataList[key]["location"],"\n"
 	    print " ****** Network ",metadataList[key]["requires"],"\n"
 	    #compute value is not present in xml info, so it must be calculate from location or requires
-	    pat = re.compile(r'http[s]{0,1}://[a-z].[a-z][a-z.0-9]*:[0-9]+')
+	    pat = re.compile(r'http[s]{0,1}://[a-z].[a-z][a-z\.\-0-9]*:[0-9]+')
 	    endpoint = re.findall(pat,metadataList[key]["location"])
 	    print " ****** Compute: ",endpoint[0]
 		
@@ -162,7 +162,7 @@ def machineLaunch(metadataList):
 	    if result.find('Status: 200') != -1:
 		if debug == 1: print result
 		print "\n\n ****** Machine ",metadataList[key]["identifier"]," launched in ",endpoint[0]," correctly."
-		pat = re.compile(r'http[s]{0,1}://[a-z].[a-z][a-z.0-9]*:[0-9]+[a-z.0-9/\-]*')
+		pat = re.compile(r'http[s]{0,1}://[a-z].[a-z][a-z\.\-0-9]*:[0-9]+[a-z.0-9/\-]*')
 		link = re.findall(pat,result)
 		print "\t  Link to machine: ",link[0]
 	    else: 
@@ -181,11 +181,13 @@ def machineList(metadataList):
     validMachines = []
     info = []
     for machine in metadataList:
-	pat = re.compile(r'http[s]{0,1}://[a-z].[a-z][a-z.0-9]*:[0-9]+')
+	print "machine:",machine
+	pat = re.compile(r'http[s]{0,1}://[a-z0-9].[a-z][a-z\.\-0-9]*:[0-9]+')
 	endpoint = re.findall(pat,machine["location"])
 	#check that endpoint/compute has at least one "X-OCCI-Location:" running, else don't do nothing
 	#usefull also to check that user running script has appropiate cerficate
 	found=0
+	print "endpoint:",endpoint
 	if len(insecures) > 0:
 	    for site in insecures:
 		if endpoint[0].find(site) != -1:
