@@ -36,13 +36,14 @@ def _extractMetadataInfos(manifestRootElement):
     for e in manifestElements:
 	manifest = ManifestInfo()
 	manifest.parseManifestFromXmlTree(e)
-	if len(manifest.locations)>0 and manifest.locations[0].find("/storage/")!= -1:
+	if len(manifest.locations)>0:
 	    info = {'md5': manifest.md5, 'os': manifest.os, 'os-version':manifest.osversion,'os-arch':manifest.arch, 'location':manifest.locations[0], 'creator':manifest.creator, 'valid':manifest.valid.replace("T"," "), 'description':manifest.comment, 'publisher':manifest.publisher, 'identifier':manifest.identifier}
 	    #parse extra attributes
 	    requires = getattr(e.find('.//{%s}requires' % NS_DCTERMS), 'text','')
 	    if requires:
 		info['requires'] = requires
 		infos.append(info)
+	print info
     return infos
 
 
@@ -68,15 +69,12 @@ def menuMain():
 	
 def menuLaunch(dataList):
     os.system('clear')
-    print ("\n\n\n")
+    print ("\n\n")
     i=0
     for machine in dataList:
-	print "\t[",i,"] ",machine["publisher"]," |-| ",machine["description"]
-	print "\t\tCreated by:",machine["creator"]
-	print "\t\t",machine["os"],machine["os-version"],machine["os-arch"]
-	print "\t\tValid until: ",machine["valid"]
-	print "\t\tLocation: ",machine["location"]
-	print "\t\tNetwork: ",machine["requires"]
+	print "\n\t[",i,"] ",machine["publisher"]," |-| ",machine["description"]
+	print "\t\tMachine created by",machine["creator"]," with",machine["os"],machine["os-version"],machine["os-arch"]," is valid until",machine["valid"]
+	print "\t\tMachine location: ",machine["location"]
 	i+=1
     print "\n\t[",i,"] Back."
     return i
