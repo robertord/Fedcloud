@@ -32,7 +32,6 @@ def _extractMetadataInfos(manifestRootElement):
     manifestElements = manifestRootElement.findall('{http://www.w3.org/1999/02/22-rdf-syntax-ns#}RDF')
     manifests = []
     infos = []
-
     for e in manifestElements:
 	manifest = ManifestInfo()
 	manifest.parseManifestFromXmlTree(e)
@@ -43,7 +42,6 @@ def _extractMetadataInfos(manifestRootElement):
 	    if requires:
 		info['requires'] = requires
 		infos.append(info)
-	print info
     return infos
 
 
