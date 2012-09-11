@@ -154,9 +154,11 @@ def machineLaunch(metadataList):
 		comAttribute += "occi.compute.cores=1,"
 		comAttribute += "occi.compute.memory=2"
 
-		comLink = "<"+metadataList[key]["requires"].replace(endpoint[0],'')+">"+";rel=\"http://schemas.ogf.org/occi/infrastructure#network\";category=\"http://schemas.ogf.org/occi/core#link\";,"
-		comLink += "<"+metadataList[key]["location"].replace(endpoint[0],'')+">"+";rel=\"http://schemas.ogf.org/occi/infrastructure#storage\";category=\"http://schemas.ogf.org/occi/core#link\";"
-		
+		#comLink = "<"+metadataList[key]["requires"].replace(endpoint[0],'')+">"+";rel=\"http://schemas.ogf.org/occi/infrastructure#network\";category=\"http://schemas.ogf.org/occi/core#link\";,"
+		comLink = "<"+metadataList[key]["requires"].replace(endpoint[0],'')+">"+";rel=\"http://schemas.ogf.org/occi/infrastructure#network\";category=\"http://schemas.ogf.org/occi/infrastructure#networkinterface\";,"
+		#comLink += "<"+metadataList[key]["location"].replace(endpoint[0],'')+">"+";rel=\"http://schemas.ogf.org/occi/infrastructure#storage\";category=\"http://schemas.ogf.org/occi/core#link\";"
+		comLink +="<"+metadataList[key]["location"].replace(endpoint[0],'')+">"+";rel=\"http://schemas.ogf.org/occi/infrastructure#storage\";category=\"http://schemas.ogf.org/occi/infrastructure#storagelink\";"
+            
 		found=0
 		if len(insecures) > 0:
 		    for site in insecures:
@@ -170,7 +172,7 @@ def machineLaunch(metadataList):
 		if debug == 1: print "Launched:",instantiate.replace(passwd,"xxxxxx")
 		status, result = commands.getstatusoutput(instantiate)
 		
-		if result.find('Status: 200') != -1 or result.find('Status: 201') != -1:
+		if result.find('Status: 20') != -1:
 		    if debug == 1: print result
 		    print "\n\n ****** Machine ",metadataList[key]["identifier"]," launched in ",endpoint[0]," correctly."
 		    pat = re.compile(r'http[s]{0,1}://[a-z].[a-z][a-z\.\-0-9]*:[0-9]+[a-z.0-9/\-]*')
@@ -198,7 +200,7 @@ def machineLaunch(metadataList):
 		if debug == 1: print "Launched:",instantiate.replace(passwd,"xxxxxx")
 		status, result = commands.getstatusoutput(instantiate)
 		
-		if result.find('201 Created') != -1:
+		if result.find('Created') != -1:
 		    if debug == 1: print result
 		    print "\n\n ****** Machine ",metadataList[key]["identifier"]," launched in ",endpoint[0]," correctly."
 		    pat = re.compile(r'http[s]{0,1}://[a-z].[a-z][a-z\.\-0-9]*:[0-9]+[a-z.0-9/\-]*')
@@ -398,7 +400,7 @@ def machineDelete(machines):
 		if debug == 1: print "Launched:",instantiate.replace(passwd,"xxxxxx")
 		status, result = commands.getstatusoutput(instantiate)
 		
-		if result.find('Status: 200') != -1:
+		if result.find('Status: 20') != -1:
 		    if debug == 1: print result
 		    print "\n\n ****** Machine ",machines[key]['endpoint']+"/compute/"+machines[key]['occi_id']," deleted correctly."
 		else: 
@@ -418,7 +420,7 @@ def machineDelete(machines):
 		if debug == 1: print "Launched:",instantiate.replace(passwd,"xxxxxx")
 		status, result = commands.getstatusoutput(instantiate)
 		
-		if result.find('200 OK') != -1:
+		if result.find('OK') != -1:
 		    if debug == 1: print result
 		    print "\n\n ****** Machine ",machines[key]['endpoint']+"/compute/"+machines[key]['occi_id']," deleted correctly."
 		else: 
