@@ -333,8 +333,11 @@ def machineList(metadataList):
 		    status, occiValues = commands.getstatusoutput(comm)
 		    ##only must be saved/showed valid machines for fedcloud or by user, attending occi values
 		    machineValues = occiValues.splitlines()
-		    info={}
+		    info = {}
+		    error = 0
 		    for m in machineValues:
+			if m.find("VM not found!") != -1:
+			    error = 1
 			if m.find("template/os") != -1:
 			    pat = re.compile(r'Category:.[^;]*')
 			    tit = re.findall(pat,m)
@@ -360,10 +363,11 @@ def machineList(metadataList):
 			    info['occi_id'] = m.replace("X-OCCI-Attribute: occi.core.id=","").replace("\"","")
 			if m.find("occi.compute.state=") != -1:
 			    info['status'] = m.replace("X-OCCI-Attribute: occi.compute.state=","").replace("\"","")
-		    if info['title'].find(machine["identifier"]) != -1:
-			info['endpoint']=endpoint[0]
-			info['framework']="OpenStack"
-			validMachines.append(info)
+		    if error == 0:
+			if info['title'].find(machine["identifier"]) != -1:
+			    info['endpoint']=endpoint[0]
+			    info['framework']="OpenStack"
+			    validMachines.append(info)
     return validMachines
 
 
