@@ -271,7 +271,7 @@ def machineList(metadataList):
 		    for m in machineValues:
 			if m.find("X-OCCI-Attribute") != -1:
 			    if m.find("occi.core.title=") != -1:
-				info['title']=m.replace("occi.core.title=","").replace("\"","")
+				info['title']=m.replace("X-OCCI-Attribute: occi.core.title=","").replace("\"","")
 			    if m.find("occi.core.summary=") != -1:
 				info['summary']=m.replace("X-OCCI-Attribute: occi.core.summary=","").replace("\"","")
 			    if m.find("opennebula.vm.ip=") != -1:
