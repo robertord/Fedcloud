@@ -269,26 +269,25 @@ def machineList(metadataList):
 		    machineValues = occiValues.splitlines()
 		    info={}
 		    for m in machineValues:
-			if m.find("occi.core.title=") != -1:
-			    info['title']=m.replace("X-OCCI-Attribute: occi.core.title=","").replace("\"","")
-			if m.find("occi.core.summary=") != -1:
-			    info['summary']=m.replace("X-OCCI-Attribute: occi.core.summary=","").replace("\"","")
-			if m.find("opennebula.vm.ip=") != -1:
-			    info['ip']=m.replace("X-OCCI-Attribute: opennebula.vm.ip=","").replace("\"","")
-			#if m.find("opennebula.vm.vnc=") != -1:
-			    #info['vnc']=m.replace("X-OCCI-Attribute: opennebula.vm.vnc=","").replace("\"","")
-			if m.find("opennebula.vm.web_vnc=") != -1:
-			    info['vncweb']=m.replace("X-OCCI-Attribute: opennebula.vm.web_vnc=","").replace("\"","")
-			if m.find("occi.compute.cores=") != -1:
-			    info['cores']=m.replace("X-OCCI-Attribute: occi.compute.cores=","").replace("\"","")
-			if m.find("occi.compute.memory=") != -1:
-			    info['memory']=m.replace("X-OCCI-Attribute: occi.compute.memory=","").replace("\"","")
-			if m.find("occi.compute.architecture=") != -1:
-			    info['architecture']=m.replace("X-OCCI-Attribute: occi.compute.architecture=","").replace("\"","")
-			if m.find("occi.core.id=") != -1:
-			    info['occi_id']=m.replace("X-OCCI-Attribute: occi.core.id=","").replace("\"","")
-			if m.find("occi.compute.state=") != -1:
-			    info['status']=m.replace("X-OCCI-Attribute: occi.compute.state=","").replace("\"","")
+			if m.find("X-OCCI-Attribute") != -1:
+			    if m.find("occi.core.title=") != -1:
+				info['title']=m.replace("occi.core.title=","").replace("\"","")
+			    if m.find("occi.core.summary=") != -1:
+				info['summary']=m.replace("X-OCCI-Attribute: occi.core.summary=","").replace("\"","")
+			    if m.find("opennebula.vm.ip=") != -1:
+				info['ip']=m.replace("X-OCCI-Attribute: opennebula.vm.ip=","").replace("\"","")
+			    if m.find("opennebula.vm.web_vnc=") != -1:
+				info['vncweb']=m.replace("X-OCCI-Attribute: opennebula.vm.web_vnc=","").replace("\"","")
+			    if m.find("occi.compute.cores=") != -1:
+				info['cores']=m.replace("X-OCCI-Attribute: occi.compute.cores=","").replace("\"","")
+			    if m.find("occi.compute.memory=") != -1:
+				info['memory']=m.replace("X-OCCI-Attribute: occi.compute.memory=","").replace("\"","")
+			    if m.find("occi.compute.architecture=") != -1:
+				info['architecture']=m.replace("X-OCCI-Attribute: occi.compute.architecture=","").replace("\"","")
+			    if m.find("occi.core.id=") != -1:
+				info['occi_id']=m.replace("occi.core.id=","").replace("\"","")
+			    if m.find("X-OCCI-Attribute: occi.compute.state=") != -1:
+				info['status']=m.replace("occi.compute.state=","").replace("\"","")
 		    if info['title'].find(machine["identifier"]) != -1:
 			info['endpoint']=endpoint[0]
 			info['framework']="OpenNebula"
@@ -325,11 +324,11 @@ def machineList(metadataList):
 		    if len(insecures) > 0:
 			for site in insecures:
 			    if endpoint[0].find(site) != -1:
-				comm = "curl -s --insecure --cert "+certpath+"/usercert.pem:"+passwd+" --key "+certpath+"/userkey.pem "+m.replace("http","https").replace("8787","8788")+" -H 'Content-Type: text/occi'"
+				comm = "curl -s --insecure --cert "+certpath+"/usercert.pem:"+passwd+" --key "+certpath+"/userkey.pem "+m.replace("http:","https:").replace("8787","8788")+" -H 'Content-Type: text/occi'"
 				found = 1
 				break
 		    if found == 0:
-			comm = "curl -s --cert "+certpath+"/usercert.pem:"+passwd+" --key "+certpath+"/userkey.pem --capath "+capath+" "+m.replace("http","https").replace("8787","8788")+" -H 'Content-Type: text/occi'"
+			comm = "curl -s --cert "+certpath+"/usercert.pem:"+passwd+" --key "+certpath+"/userkey.pem --capath "+capath+" "+m.replace("http:","https:").replace("8787","8788")+" -H 'Content-Type: text/occi'"
 		    if debug == 1: print "Launched:",comm.replace(passwd,"xxxxxx")
 		    status, occiValues = commands.getstatusoutput(comm)
 		    ##only must be saved/showed valid machines for fedcloud or by user, attending occi values
