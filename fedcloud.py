@@ -20,6 +20,10 @@ capath="/etc/grid-security/certificates/"
 ###
 ###
 
+### TIMEOUT is used for debug purposes to limit curl opetation max time
+TIMEOUT = 999
+###
+
 etree = Util.importETree()
 
 NS_DCTERMS = 'http://purl.org/dc/terms/'
@@ -56,7 +60,6 @@ def _extractMetadataInfos(manifestRootElement):
 		else:
 		    info['cloud'] = "opennebula"
 		infos.append(info)
-		
     return infos
 
 
@@ -214,7 +217,6 @@ def machineLaunch(metadataList):
 	if key==numberMachines: 
 	    break
 	    
-
 def machineList(metadataList):
     os.system('clear')
     print "\n\n\n"
@@ -310,11 +312,11 @@ def machineList(metadataList):
 		if len(insecures) > 0:
 		    for site in insecures:
 			if endpoint[0].find(site) != -1:
-			    runningMachines = "curl -s --insecure --cert "+certpath+"/usercert.pem:"+passwd+" --key "+certpath+"/userkey.pem "+endpoint[0].replace("8787","8788")+"/compute/ -H 'Content-Type: text/occi' | grep -v \"^$\" | awk \'{ print $2 }\'"
+			    runningMachines = "curl -s -m "+str(TIMEOUT)+" --insecure --cert "+certpath+"/usercert.pem:"+passwd+" --key "+certpath+"/userkey.pem "+endpoint[0].replace("8787","8788")+"/compute/ -H 'Content-Type: text/occi' | grep -v \"^$\" | awk \'{ print $2 }\'"
 			    found = 1
 			    break
 		if found == 0:
-		    runningMachines = "curl -s --cert "+certpath+"/usercert.pem:"+passwd+" --key "+certpath+"/userkey.pem "+endpoint[0].replace("8787","8788")+"/compute/ --capath "+capath+" -H 'Content-Type: text/occi' | grep -v \"^$\" | awk \'{ print $2 }\'"
+		    runningMachines = "curl -s -m "+str(TIMEOUT)+" --cert "+certpath+"/usercert.pem:"+passwd+" --key "+certpath+"/userkey.pem "+endpoint[0].replace("8787","8788")+"/compute/ --capath "+capath+" -H 'Content-Type: text/occi' | grep -v \"^$\" | awk \'{ print $2 }\'"
 		if debug == 1: print "Launched:",runningMachines.replace(passwd,"xxxxxx")
 		status, machines = commands.getstatusoutput(runningMachines)
 		listMachines = machines.splitlines()
@@ -324,17 +326,19 @@ def machineList(metadataList):
 		    if len(insecures) > 0:
 			for site in insecures:
 			    if endpoint[0].find(site) != -1:
-				comm = "curl -s --insecure --cert "+certpath+"/usercert.pem:"+passwd+" --key "+certpath+"/userkey.pem "+m.replace("http:","https:").replace("8787","8788")+" -H 'Content-Type: text/occi'"
+				comm = "curl -s -m "+str(TIMEOUT)+" --insecure --cert "+certpath+"/usercert.pem:"+passwd+" --key "+certpath+"/userkey.pem "+m.replace("http:","https:").replace("8787","8788")+" -H 'Content-Type: text/occi'"
 				found = 1
 				break
 		    if found == 0:
-			comm = "curl -s --cert "+certpath+"/usercert.pem:"+passwd+" --key "+certpath+"/userkey.pem --capath "+capath+" "+m.replace("http:","https:").replace("8787","8788")+" -H 'Content-Type: text/occi'"
+			comm = "curl -s -m "+str(TIMEOUT)+" --cert "+certpath+"/usercert.pem:"+passwd+" --key "+certpath+"/userkey.pem --capath "+capath+" "+m.replace("http:","https:").replace("8787","8788")+" -H 'Content-Type: text/occi'"
 		    if debug == 1: print "Launched:",comm.replace(passwd,"xxxxxx")
 		    status, occiValues = commands.getstatusoutput(comm)
 		    ##only must be saved/showed valid machines for fedcloud or by user, attending occi values
 		    machineValues = occiValues.splitlines()
 		    info = {}
 		    error = 0
+		    if len(machineValues) == 0:
+			error = 1
 		    for m in machineValues:
 			if m.find("VM not found!") != -1:
 			    error = 1
