@@ -21,7 +21,7 @@ capath="/etc/grid-security/certificates/"
 ###
 
 ### TIMEOUT is used for debug purposes to limit curl opetation max time
-TIMEOUT = 999
+TIMEOUT = 10
 ###
 
 etree = Util.importETree()
@@ -287,9 +287,9 @@ def machineList(metadataList):
 			    if m.find("occi.compute.architecture=") != -1:
 				info['architecture']=m.replace("X-OCCI-Attribute: occi.compute.architecture=","").replace("\"","")
 			    if m.find("occi.core.id=") != -1:
-				info['occi_id']=m.replace("occi.core.id=","").replace("\"","")
+				info['occi_id']=m.replace("X-OCCI-Attribute: occi.core.id=","").replace("\"","")
 			    if m.find("X-OCCI-Attribute: occi.compute.state=") != -1:
-				info['status']=m.replace("occi.compute.state=","").replace("\"","")
+				info['status']=m.replace("X-OCCI-Attribute: occi.compute.state=","").replace("\"","")
 		    if info['title'].find(machine["identifier"]) != -1:
 			info['endpoint']=endpoint[0]
 			info['framework']="OpenNebula"
