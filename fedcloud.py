@@ -284,10 +284,10 @@ def checkMachine(machine,validMachines):
 			    info['occi_id']=m.replace("X-OCCI-Attribute: occi.core.id=","").replace("\"","")
 			if m.find("X-OCCI-Attribute: occi.compute.state=") != -1:
 			    info['status']=m.replace("X-OCCI-Attribute: occi.compute.state=","").replace("\"","")
-		if info['title'].find(machine["identifier"]) != -1:
-		    info['endpoint']=endpoint[0]
-		    info['framework']="OpenNebula"
-		    validMachines.append(info)
+			if info['title'].find(machine["identifier"]) != -1:
+			    info['endpoint']=endpoint[0]
+			    info['framework']="OpenNebula"
+			    validMachines.append(info)
     else:#if not opennebula
 	found=0
 	if len(insecures) > 0:
