@@ -105,8 +105,13 @@ def menuMachines(machines):
 	    print "\t[",i,"] ",machine['title']," running in ",machine['endpoint']," with ",machine['framework']," framework"
 	if 'summary' in machine:
 	    print "\t\t",machine['summary']
+        ips = ""
+        if 'floating_ip' in machine:
+            ips += "\t\tFloating IP:" + machine['floating_ip']
 	if 'ip' in machine:
-	    print "\t\tIP:",machine['ip']
+            ips += "\t\tIP:" + machine['ip']
+        if ips != "":
+            print ips
 	dates = ""
 	if 'cores' in machine:
 	    dates += "\t\tNumber of cores:"+machine['cores']
@@ -355,6 +360,8 @@ def checkMachine(machine,validMachines):
 			pat = re.compile(r'occi.networkinterface.address=\"[0-9.^;]*\"')
 			ip = re.findall(pat,m)
 			info['ip'] = ip[0].replace("occi.networkinterface.address=","").replace("\"","")
+                    if m.find("X-OCCI-Attribute: org.openstack.network.floating.ip=") != -1:
+                        info['floating_ip']=m.replace("X-OCCI-Attribute: org.openstack.network.floating.ip=", "").replace("\"", "")
 		    if m.find("/console/vnc/") != -1:
 			pat = re.compile(r'occi.core.target=\".[^\"]*\"')
 			vnc = re.findall(pat,m)
