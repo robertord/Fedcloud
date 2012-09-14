@@ -263,7 +263,7 @@ def checkMachine(machine,validMachines):
 		status, occiValues = commands.getstatusoutput(comm)
 		##only must be saved/showed valid machines for fedcloud or by user, attending occi values
 		machineValues = occiValues.splitlines()
-		info={}
+		info = {}
 		for m in machineValues:
 		    if m.find("X-OCCI-Attribute") != -1:
 			if m.find("occi.core.title=") != -1:
@@ -284,10 +284,10 @@ def checkMachine(machine,validMachines):
 			    info['occi_id']=m.replace("X-OCCI-Attribute: occi.core.id=","").replace("\"","")
 			if m.find("X-OCCI-Attribute: occi.compute.state=") != -1:
 			    info['status']=m.replace("X-OCCI-Attribute: occi.compute.state=","").replace("\"","")
-			if info['title'].find(machine["identifier"]) != -1:
-			    info['endpoint']=endpoint[0]
-			    info['framework']="OpenNebula"
-			    validMachines.append(info)
+	    if 'title' in info and info['title'].find(machine["identifier"]) != -1:
+		info['endpoint']=endpoint[0]
+		info['framework']="OpenNebula"
+		validMachines.append(info)
     else:#if not opennebula
 	found=0
 	if len(insecures) > 0:
@@ -362,7 +362,7 @@ def checkMachine(machine,validMachines):
 		    if m.find("occi.compute.state=") != -1:
 			info['status'] = m.replace("X-OCCI-Attribute: occi.compute.state=","").replace("\"","")
 		if error == 0:
-		    if info['title'].find(machine["identifier"]) != -1:
+		    if 'title' in info and info['title'].find(machine["identifier"]) != -1:
 			info['endpoint']=endpoint[0]
 			info['framework']="OpenStack"
 			validMachines.append(info)    
