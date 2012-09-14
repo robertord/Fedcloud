@@ -210,6 +210,14 @@ def machineLaunch(metadataList):
 		    pat = re.compile(r'http[s]{0,1}://[a-z].[a-z][a-z\.\-0-9]*:[0-9]+[a-z.0-9/\-]*')
 		    link = re.findall(pat,result)
 		    print "\t  Link to machine: ",link[0]
+
+                    ## Allocate a floating IP
+                    alloc_ip_headers = " -H 'Category: alloc_float_ip; scheme=\"http://schemas.openstack.org/instance/action#\"; class=\"action\"; title=\"Allocate a floating IP to the compute resource.\"'"
+                    alloc_ip_headers += " -H 'X-OCCI-Attribute: org.openstack.network.floating.pool=\"public_ips\"'"
+                    alloc_ip = "curl -s --sslv3 --cert "+certpath+"/usercert.pem:"+passwd+" --key "+certpath+"/userkey.pem -H 'Content-Type: text/occi' -X POST -v "+link[0]+"?action=alloc_float_ip"+alloc_ip_headers
+                    if debug == 1: print alloc_ip.replace(passwd,"xxxxxx")
+                    alloc_ip_status, alloc_ip_result = commands.getstatusoutput(alloc_ip)
+                    if debug == 1: print alloc_ip_result
 		else: 
 		    if debug == 1: print result
 		    print "\n\t\tError launching selected machine."
