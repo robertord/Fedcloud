@@ -7,6 +7,7 @@ import urllib2
 import re
 import commands
 import getpass
+import threading
 from stratuslab.Exceptions import InputException, ExecutionException
 from stratuslab.ManifestInfo import ManifestInfo
 import stratuslab.Util as Util
@@ -21,7 +22,7 @@ capath="/etc/grid-security/certificates/"
 ###
 
 ### TIMEOUT is used for debug purposes to limit curl opetation max time
-TIMEOUT = 10
+TIMEOUT = 999
 ###
 
 etree = Util.importETree()
@@ -216,162 +217,170 @@ def machineLaunch(metadataList):
 		
 	if key==numberMachines: 
 	    break
+	
+def checkMachine(machine,validMachines):
+    pat = re.compile(r'http[s]{0,1}://[a-z0-9].[a-z][a-z\.\-0-9]*:[0-9]+')
+    endpoint = re.findall(pat,machine["location"])
+    #check that endpoint/compute has at least one "X-OCCI-Location:" running, else don't do nothing
+    #usefull also to check that user running script has appropiate cerficate
+    if machine["cloud"] == "opennebula":
+	found=0
+	if len(insecures) > 0:
+	    for site in insecures:
+		if endpoint[0].find(site) != -1:
+		    checkRunning = "curl -s -sslv3 --insecure --cert "+certpath+"/usercert.pem:"+passwd+" --key "+certpath+"/userkey.pem "+endpoint[0]+"/compute/ | awk \'{ print $1 }\'"
+		    found = 1
+		    break
+	if found == 0:
+	    checkRunning = "curl -s --cert "+certpath+"/usercert.pem:"+passwd+" --key "+certpath+"/userkey.pem "+endpoint[0]+"/compute/ --capath "+capath+" | awk \'{ print $1 }\'"
+	if debug == 1: print "Launched:",checkRunning.replace(passwd,"xxxxxx")
+	status, checkResult = commands.getstatusoutput(checkRunning)
+	if checkResult.find("X-OCCI-Location:") != -1:
+	    found=0
+	    if len(insecures) > 0:
+		for site in insecures:
+		    if endpoint[0].find(site) != -1:
+			runningMachines = "curl -s --insecure --cert "+certpath+"/usercert.pem:"+passwd+" --key "+certpath+"/userkey.pem "+endpoint[0]+"/compute/ | awk \'{ print $2 }\'"
+			found = 1
+			break
+	    if found == 0:
+		runningMachines = "curl -s --cert "+certpath+"/usercert.pem:"+passwd+" --key "+certpath+"/userkey.pem "+endpoint[0]+"/compute/ --capath "+capath+" | awk \'{ print $2 }\'"
+	    if debug == 1: print "Launched:",runningMachines.replace(passwd,"xxxxxx")
+	    status, machines = commands.getstatusoutput(runningMachines)
+	    listMachines = machines.splitlines()
 	    
+	    for m in listMachines:
+		found=0
+		if len(insecures) > 0:
+		    for site in insecures:
+			if endpoint[0].find(site) != -1:
+			    comm = "curl -s --insecure --cert "+certpath+"/usercert.pem:"+passwd+" --key "+certpath+"/userkey.pem "+m
+			    found = 1
+			    break
+		if found == 0:
+		    comm = "curl -s --cert "+certpath+"/usercert.pem:"+passwd+" --key "+certpath+"/userkey.pem --capath "+capath+" "+m
+		if debug == 1: print "Launched:",comm.replace(passwd,"xxxxxx")
+		status, occiValues = commands.getstatusoutput(comm)
+		##only must be saved/showed valid machines for fedcloud or by user, attending occi values
+		machineValues = occiValues.splitlines()
+		info={}
+		for m in machineValues:
+		    if m.find("X-OCCI-Attribute") != -1:
+			if m.find("occi.core.title=") != -1:
+			    info['title']=m.replace("X-OCCI-Attribute: occi.core.title=","").replace("\"","")
+			if m.find("occi.core.summary=") != -1:
+			    info['summary']=m.replace("X-OCCI-Attribute: occi.core.summary=","").replace("\"","")
+			if m.find("opennebula.vm.ip=") != -1:
+			    info['ip']=m.replace("X-OCCI-Attribute: opennebula.vm.ip=","").replace("\"","")
+			if m.find("opennebula.vm.web_vnc=") != -1:
+			    info['vncweb']=m.replace("X-OCCI-Attribute: opennebula.vm.web_vnc=","").replace("\"","")
+			if m.find("occi.compute.cores=") != -1:
+			    info['cores']=m.replace("X-OCCI-Attribute: occi.compute.cores=","").replace("\"","")
+			if m.find("occi.compute.memory=") != -1:
+			    info['memory']=m.replace("X-OCCI-Attribute: occi.compute.memory=","").replace("\"","")
+			if m.find("occi.compute.architecture=") != -1:
+			    info['architecture']=m.replace("X-OCCI-Attribute: occi.compute.architecture=","").replace("\"","")
+			if m.find("occi.core.id=") != -1:
+			    info['occi_id']=m.replace("X-OCCI-Attribute: occi.core.id=","").replace("\"","")
+			if m.find("X-OCCI-Attribute: occi.compute.state=") != -1:
+			    info['status']=m.replace("X-OCCI-Attribute: occi.compute.state=","").replace("\"","")
+		if info['title'].find(machine["identifier"]) != -1:
+		    info['endpoint']=endpoint[0]
+		    info['framework']="OpenNebula"
+		    validMachines.append(info)
+    else:#if not opennebula
+	found=0
+	if len(insecures) > 0:
+	    for site in insecures:
+		if endpoint[0].find(site) != -1:
+		    checkRunning = "curl -s -sslv3 --insecure --cert "+certpath+"/usercert.pem:"+passwd+" --key "+certpath+"/userkey.pem "+endpoint[0]+"/compute/ -H 'Content-Type: text/occi'| awk \'{ print $1 }\'"
+		    found = 1
+		    break
+	if found == 0:
+	    checkRunning = "curl -s --cert "+certpath+"/usercert.pem:"+passwd+" --key "+certpath+"/userkey.pem "+endpoint[0]+"/compute/ -H 'Content-Type: text/occi' --capath "+capath+" | awk \'{ print $1 }\'"
+	if debug == 1: print "Launched:",checkRunning.replace(passwd,"xxxxxx")
+	
+	status, checkResult = commands.getstatusoutput(checkRunning)
+	if checkResult.find("X-OCCI-Location:") != -1:
+	    found=0
+	    if len(insecures) > 0:
+		for site in insecures:
+		    if endpoint[0].find(site) != -1:
+			runningMachines = "curl -s -m "+str(TIMEOUT)+" --insecure --cert "+certpath+"/usercert.pem:"+passwd+" --key "+certpath+"/userkey.pem "+endpoint[0].replace("8787","8788")+"/compute/ -H 'Content-Type: text/occi' | grep -v \"^$\" | awk \'{ print $2 }\'"
+			found = 1
+			break
+	    if found == 0:
+		runningMachines = "curl -s -m "+str(TIMEOUT)+" --cert "+certpath+"/usercert.pem:"+passwd+" --key "+certpath+"/userkey.pem "+endpoint[0].replace("8787","8788")+"/compute/ --capath "+capath+" -H 'Content-Type: text/occi' | grep -v \"^$\" | awk \'{ print $2 }\'"
+	    if debug == 1: print "Launched:",runningMachines.replace(passwd,"xxxxxx")
+	    status, machines = commands.getstatusoutput(runningMachines)
+	    listMachines = machines.splitlines()
+	    
+	    for m in listMachines:
+		found=0
+		if len(insecures) > 0:
+		    for site in insecures:
+			if endpoint[0].find(site) != -1:
+			    comm = "curl -s -m "+str(TIMEOUT)+" --insecure --cert "+certpath+"/usercert.pem:"+passwd+" --key "+certpath+"/userkey.pem "+m.replace("http:","https:").replace("8787","8788")+" -H 'Content-Type: text/occi'"
+			    found = 1
+			    break
+		if found == 0:
+		    comm = "curl -s -m "+str(TIMEOUT)+" --cert "+certpath+"/usercert.pem:"+passwd+" --key "+certpath+"/userkey.pem --capath "+capath+" "+m.replace("http:","https:").replace("8787","8788")+" -H 'Content-Type: text/occi'"
+		if debug == 1: print "Launched:",comm.replace(passwd,"xxxxxx")
+		status, occiValues = commands.getstatusoutput(comm)
+		##only must be saved/showed valid machines for fedcloud or by user, attending occi values
+		machineValues = occiValues.splitlines()
+		info = {}
+		error = 0
+		if len(machineValues) == 0:
+		    error = 1
+		for m in machineValues:
+		    if m.find("VM not found!") != -1:
+			error = 1
+		    if m.find("template/os") != -1:
+			pat = re.compile(r'Category:.[^;]*')
+			tit = re.findall(pat,m)
+			info['title'] = tit[0].replace("Category:","").replace("\"","")
+			pat = re.compile(r'title=\".[^\"]*\"')
+			summ = re.findall(pat,m)
+			info['summary'] = summ[0].replace("title=","").replace("\"","")
+		    if m.find("/network/") != -1:
+			pat = re.compile(r'occi.networkinterface.address=\"[0-9.^;]*\"')
+			ip = re.findall(pat,m)
+			info['ip'] = ip[0].replace("occi.networkinterface.address=","").replace("\"","")
+		    if m.find("/console/vnc/") != -1:
+			pat = re.compile(r'occi.core.target=\".[^\"]*\"')
+			vnc = re.findall(pat,m)
+			info['vncweb'] = endpoint[0]+vnc[0].replace("occi.core.target=","").replace("\"","")
+		    if m.find("occi.compute.cores=") != -1:
+			info['cores'] = m.replace("X-OCCI-Attribute: occi.compute.cores=","").replace("\"","")
+		    if m.find("occi.compute.memory=") != -1:
+			info['memory'] = m.replace("X-OCCI-Attribute: occi.compute.memory=","").replace("\"","")
+		    if m.find("occi.compute.architecture=") != -1:
+			info['architecture'] = m.replace("X-OCCI-Attribute: occi.compute.architecture=","").replace("\"","")
+		    if m.find("occi.core.id=") != -1:
+			info['occi_id'] = m.replace("X-OCCI-Attribute: occi.core.id=","").replace("\"","")
+		    if m.find("occi.compute.state=") != -1:
+			info['status'] = m.replace("X-OCCI-Attribute: occi.compute.state=","").replace("\"","")
+		if error == 0:
+		    if info['title'].find(machine["identifier"]) != -1:
+			info['endpoint']=endpoint[0]
+			info['framework']="OpenStack"
+			validMachines.append(info)    
+
+
 def machineList(metadataList):
     os.system('clear')
     print "\n\n\n"
     print "\t\tLooking for valid fedcloud machines running....\n"
     validMachines = []
     info = []
+    threads = [] 
     for machine in metadataList:
-	pat = re.compile(r'http[s]{0,1}://[a-z0-9].[a-z][a-z\.\-0-9]*:[0-9]+')
-	endpoint = re.findall(pat,machine["location"])
-	#check that endpoint/compute has at least one "X-OCCI-Location:" running, else don't do nothing
-	#usefull also to check that user running script has appropiate cerficate
-	if machine["cloud"] == "opennebula":
-	    found=0
-	    if len(insecures) > 0:
-		for site in insecures:
-		    if endpoint[0].find(site) != -1:
-			checkRunning = "curl -s -sslv3 --insecure --cert "+certpath+"/usercert.pem:"+passwd+" --key "+certpath+"/userkey.pem "+endpoint[0]+"/compute/ | awk \'{ print $1 }\'"
-			found = 1
-			break
-	    if found == 0:
-		checkRunning = "curl -s --cert "+certpath+"/usercert.pem:"+passwd+" --key "+certpath+"/userkey.pem "+endpoint[0]+"/compute/ --capath "+capath+" | awk \'{ print $1 }\'"
-	    if debug == 1: print "Launched:",checkRunning.replace(passwd,"xxxxxx")
-	    status, checkResult = commands.getstatusoutput(checkRunning)
-	    if checkResult.find("X-OCCI-Location:") != -1:
-		
-		found=0
-		if len(insecures) > 0:
-		    for site in insecures:
-			if endpoint[0].find(site) != -1:
-			    runningMachines = "curl -s --insecure --cert "+certpath+"/usercert.pem:"+passwd+" --key "+certpath+"/userkey.pem "+endpoint[0]+"/compute/ | awk \'{ print $2 }\'"
-			    found = 1
-			    break
-		if found == 0:
-		    runningMachines = "curl -s --cert "+certpath+"/usercert.pem:"+passwd+" --key "+certpath+"/userkey.pem "+endpoint[0]+"/compute/ --capath "+capath+" | awk \'{ print $2 }\'"
-		if debug == 1: print "Launched:",runningMachines.replace(passwd,"xxxxxx")
-		status, machines = commands.getstatusoutput(runningMachines)
-		listMachines = machines.splitlines()
-		
-		for m in listMachines:
-		    found=0
-		    if len(insecures) > 0:
-			for site in insecures:
-			    if endpoint[0].find(site) != -1:
-				comm = "curl -s --insecure --cert "+certpath+"/usercert.pem:"+passwd+" --key "+certpath+"/userkey.pem "+m
-				found = 1
-				break
-		    if found == 0:
-			comm = "curl -s --cert "+certpath+"/usercert.pem:"+passwd+" --key "+certpath+"/userkey.pem --capath "+capath+" "+m
-		    if debug == 1: print "Launched:",comm.replace(passwd,"xxxxxx")
-		    status, occiValues = commands.getstatusoutput(comm)
-		    ##only must be saved/showed valid machines for fedcloud or by user, attending occi values
-		    machineValues = occiValues.splitlines()
-		    info={}
-		    for m in machineValues:
-			if m.find("X-OCCI-Attribute") != -1:
-			    if m.find("occi.core.title=") != -1:
-				info['title']=m.replace("X-OCCI-Attribute: occi.core.title=","").replace("\"","")
-			    if m.find("occi.core.summary=") != -1:
-				info['summary']=m.replace("X-OCCI-Attribute: occi.core.summary=","").replace("\"","")
-			    if m.find("opennebula.vm.ip=") != -1:
-				info['ip']=m.replace("X-OCCI-Attribute: opennebula.vm.ip=","").replace("\"","")
-			    if m.find("opennebula.vm.web_vnc=") != -1:
-				info['vncweb']=m.replace("X-OCCI-Attribute: opennebula.vm.web_vnc=","").replace("\"","")
-			    if m.find("occi.compute.cores=") != -1:
-				info['cores']=m.replace("X-OCCI-Attribute: occi.compute.cores=","").replace("\"","")
-			    if m.find("occi.compute.memory=") != -1:
-				info['memory']=m.replace("X-OCCI-Attribute: occi.compute.memory=","").replace("\"","")
-			    if m.find("occi.compute.architecture=") != -1:
-				info['architecture']=m.replace("X-OCCI-Attribute: occi.compute.architecture=","").replace("\"","")
-			    if m.find("occi.core.id=") != -1:
-				info['occi_id']=m.replace("X-OCCI-Attribute: occi.core.id=","").replace("\"","")
-			    if m.find("X-OCCI-Attribute: occi.compute.state=") != -1:
-				info['status']=m.replace("X-OCCI-Attribute: occi.compute.state=","").replace("\"","")
-		    if info['title'].find(machine["identifier"]) != -1:
-			info['endpoint']=endpoint[0]
-			info['framework']="OpenNebula"
-			validMachines.append(info)
-	else:#if not opennebula
-	    found=0
-	    if len(insecures) > 0:
-		for site in insecures:
-		    if endpoint[0].find(site) != -1:
-			checkRunning = "curl -s -sslv3 --insecure --cert "+certpath+"/usercert.pem:"+passwd+" --key "+certpath+"/userkey.pem "+endpoint[0]+"/compute/ -H 'Content-Type: text/occi'| awk \'{ print $1 }\'"
-			found = 1
-			break
-	    if found == 0:
-		checkRunning = "curl -s --cert "+certpath+"/usercert.pem:"+passwd+" --key "+certpath+"/userkey.pem "+endpoint[0]+"/compute/ -H 'Content-Type: text/occi' --capath "+capath+" | awk \'{ print $1 }\'"
-	    if debug == 1: print "Launched:",checkRunning.replace(passwd,"xxxxxx")
-	    
-	    status, checkResult = commands.getstatusoutput(checkRunning)
-	    if checkResult.find("X-OCCI-Location:") != -1:
-		found=0
-		if len(insecures) > 0:
-		    for site in insecures:
-			if endpoint[0].find(site) != -1:
-			    runningMachines = "curl -s -m "+str(TIMEOUT)+" --insecure --cert "+certpath+"/usercert.pem:"+passwd+" --key "+certpath+"/userkey.pem "+endpoint[0].replace("8787","8788")+"/compute/ -H 'Content-Type: text/occi' | grep -v \"^$\" | awk \'{ print $2 }\'"
-			    found = 1
-			    break
-		if found == 0:
-		    runningMachines = "curl -s -m "+str(TIMEOUT)+" --cert "+certpath+"/usercert.pem:"+passwd+" --key "+certpath+"/userkey.pem "+endpoint[0].replace("8787","8788")+"/compute/ --capath "+capath+" -H 'Content-Type: text/occi' | grep -v \"^$\" | awk \'{ print $2 }\'"
-		if debug == 1: print "Launched:",runningMachines.replace(passwd,"xxxxxx")
-		status, machines = commands.getstatusoutput(runningMachines)
-		listMachines = machines.splitlines()
-		
-		for m in listMachines:
-		    found=0
-		    if len(insecures) > 0:
-			for site in insecures:
-			    if endpoint[0].find(site) != -1:
-				comm = "curl -s -m "+str(TIMEOUT)+" --insecure --cert "+certpath+"/usercert.pem:"+passwd+" --key "+certpath+"/userkey.pem "+m.replace("http:","https:").replace("8787","8788")+" -H 'Content-Type: text/occi'"
-				found = 1
-				break
-		    if found == 0:
-			comm = "curl -s -m "+str(TIMEOUT)+" --cert "+certpath+"/usercert.pem:"+passwd+" --key "+certpath+"/userkey.pem --capath "+capath+" "+m.replace("http:","https:").replace("8787","8788")+" -H 'Content-Type: text/occi'"
-		    if debug == 1: print "Launched:",comm.replace(passwd,"xxxxxx")
-		    status, occiValues = commands.getstatusoutput(comm)
-		    ##only must be saved/showed valid machines for fedcloud or by user, attending occi values
-		    machineValues = occiValues.splitlines()
-		    info = {}
-		    error = 0
-		    if len(machineValues) == 0:
-			error = 1
-		    for m in machineValues:
-			if m.find("VM not found!") != -1:
-			    error = 1
-			if m.find("template/os") != -1:
-			    pat = re.compile(r'Category:.[^;]*')
-			    tit = re.findall(pat,m)
-			    info['title'] = tit[0].replace("Category:","").replace("\"","")
-			    pat = re.compile(r'title=\".[^\"]*\"')
-			    summ = re.findall(pat,m)
-			    info['summary'] = summ[0].replace("title=","").replace("\"","")
-			if m.find("/network/") != -1:
-			    pat = re.compile(r'occi.networkinterface.address=\"[0-9.^;]*\"')
-			    ip = re.findall(pat,m)
-			    info['ip'] = ip[0].replace("occi.networkinterface.address=","").replace("\"","")
-			if m.find("/console/vnc/") != -1:
-			    pat = re.compile(r'occi.core.target=\".[^\"]*\"')
-			    vnc = re.findall(pat,m)
-			    info['vncweb'] = endpoint[0]+vnc[0].replace("occi.core.target=","").replace("\"","")
-			if m.find("occi.compute.cores=") != -1:
-			    info['cores'] = m.replace("X-OCCI-Attribute: occi.compute.cores=","").replace("\"","")
-			if m.find("occi.compute.memory=") != -1:
-			    info['memory'] = m.replace("X-OCCI-Attribute: occi.compute.memory=","").replace("\"","")
-			if m.find("occi.compute.architecture=") != -1:
-			    info['architecture'] = m.replace("X-OCCI-Attribute: occi.compute.architecture=","").replace("\"","")
-			if m.find("occi.core.id=") != -1:
-			    info['occi_id'] = m.replace("X-OCCI-Attribute: occi.core.id=","").replace("\"","")
-			if m.find("occi.compute.state=") != -1:
-			    info['status'] = m.replace("X-OCCI-Attribute: occi.compute.state=","").replace("\"","")
-		    if error == 0:
-			if info['title'].find(machine["identifier"]) != -1:
-			    info['endpoint']=endpoint[0]
-			    info['framework']="OpenStack"
-			    validMachines.append(info)
+	t = threading.Thread(target=checkMachine, args=(machine,validMachines))
+	threads += [t]
+	t.start()
+    for x in threads: 
+	x.join()
     return validMachines
 
 

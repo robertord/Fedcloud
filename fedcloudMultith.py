@@ -236,7 +236,6 @@ def checkMachine(machine,validMachines):
 	if debug == 1: print "Launched:",checkRunning.replace(passwd,"xxxxxx")
 	status, checkResult = commands.getstatusoutput(checkRunning)
 	if checkResult.find("X-OCCI-Location:") != -1:
-	    
 	    found=0
 	    if len(insecures) > 0:
 		for site in insecures:
