@@ -1,0 +1,185 @@
+#!/usr/bin/env python
+# USAGE: python vmcatcher_eventHndlExpl_ON --output_file=kk --datetime
+import sys
+if sys.version_info < (2, 4):
+    print "Your python interpreter is too old. Please consider upgrading."
+    sys.exit(1)
+
+import os
+import logging
+import optparse
+import hashlib
+import datetime
+try:
+    import simplejson as json
+except:
+    import json
+import time
+import datetime
+
+import xml.dom.minidom
+from xml.dom.minidom import Node
+
+
+time_format_definition = "%Y-%m-%dT%H:%M:%SZ"
+
+
+EnvEvent = set(['VMCATCHER_EVENT_TYPE',
+    'VMCATCHER_EVENT_DC_DESCRIPTION',
+    'VMCATCHER_EVENT_DC_IDENTIFIER',
+    'VMCATCHER_EVENT_DC_TITLE',
+    'VMCATCHER_EVENT_HV_HYPERVISOR',
+    'VMCATCHER_EVENT_HV_SIZE',
+    'VMCATCHER_EVENT_HV_URI',
+    'VMCATCHER_EVENT_SL_ARCH',
+    'VMCATCHER_EVENT_SL_CHECKSUM_SHA512',
+    'VMCATCHER_EVENT_SL_COMMENTS',
+    'VMCATCHER_EVENT_SL_OS',
+    'VMCATCHER_EVENT_SL_OSVERSION',
+    'VMCATCHER_EVENT_TYPE',
+    'VMCATCHER_EVENT_FILENAME'])
+    
+EnvConf = set(['VMCATCHER_RDBMS',
+    'VMCATCHER_CACHE_EVENT',
+    'VMCATCHER_LOG_CONF',
+    'VMCATCHER_DIR_CERT',
+    'VMCATCHER_CACHE_DIR_CACHE',
+    'VMCATCHER_CACHE_DIR_DOWNLOAD',
+    'VMCATCHER_CACHE_DIR_EXPIRE',
+    'VMCATCHER_CACHE_ACTION_DOWNLOAD',
+    'VMCATCHER_CACHE_ACTION_CHECK',
+    'VMCATCHER_CACHE_ACTION_EXPIRE'])
+
+
+def generateEnvDict(enviromentDict = os.environ):
+    FoundEnviroment = {}
+    EnvConfInteresting = EnvEvent.union(EnvConf)
+    for key in EnvConfInteresting:
+        if key in enviromentDict.keys():
+            FoundEnviroment[key] = enviromentDict[key]
+    return FoundEnviroment
+
+def nullEnvDict(enviromentDict = generateEnvDict(),NullValue = ""):
+    FoundEnviroment = enviromentDict.copy()
+    enviromentKeysSet = set(FoundEnviroment.keys())
+    EnvConfInteresting = EnvEvent.union(EnvConf)
+    missing = EnvConfInteresting.difference(enviromentKeysSet)
+    for item in missing:
+        FoundEnviroment[item] = NullValue
+    return FoundEnviroment
+  
+ 
+def getExpiredId(vmcatcherId):
+	command = "oneimage list --xml>/tmp/onelist.tmp"
+	xmlresult = os.system(command)
+	xmldoc = xml.dom.minidom.parse("/tmp/onelist.tmp")
+
+	for node in xmldoc.getElementsByTagName("IMAGE"):
+	        idList = node.getElementsByTagName("ID")
+	        for id in idList:
+			imageId = id.toxml().replace('<ID>','').replace('</ID>','')
+	        template = node.getElementsByTagName("TEMPLATE")
+	        for t in template:
+        	        catcherId = t.getElementsByTagName("VMCATCHER_EVENT_DC_IDENTIFIER")
+                	for cId in catcherId:
+				catcherId = cId.toxml().replace('<VMCATCHER_EVENT_DC_IDENTIFIER>','').replace('</VMCATCHER_EVENT_DC_IDENTIFIER>','').replace('<![CDATA[','').replace(']]>','')
+				if catcherId == vmcatcherId:
+#					print "encontrada una imagen para borrar:"####################################DELETE ME: i'm only for check purpouse
+#					print "id: "+imageId####################################DELETE ME: i'm only for check purpouse
+#					print "catcherId: "+catcherId####################################DELETE ME: i'm only for check purpouse
+					return imageId			
+
+ 
+def main():
+    reload(sys)
+    sys.setdefaultencoding('utf-8')
+    log = logging.getLogger("main")
+    p = optparse.OptionParser(version = "%prog " + "0.0.1")    
+    p.add_option('--output_file', action ='store',help='Output file to log event.', metavar='OUTPUT_LOGFILE')
+    p.add_option('--generator',  action ='store',help='Set the dictionary Generator.', metavar='minium')
+    p.add_option('--datetime',  action ='store_true',help='Add a datetime stamp.')
+    
+    p.add_option('--logcfg', action ='store',help='Logfile configuration file.', metavar='LOGCFGFILE')
+    
+    options, arguments = p.parse_args()
+    if options.logcfg:
+        if os.path.isfile(str(options.logfile)):
+            logging.config.fileConfig(options.logfile)
+        else:
+            logging.basicConfig(level=logging.INFO)
+            log = logging.getLogger("main")
+            log.error("Logfile configuration file '%s' was not found." % (options.logfile))
+            sys.exit(1)
+    else:
+        logging.basicConfig(level=logging.INFO)    
+    outputDict = None
+    generator = nullEnvDict()
+    if options.generator:
+        if options.generator == "minium":
+            generator = generateEnvDict()
+    if options.datetime:
+        generator['DATETIME'] = datetime.datetime.now().strftime(time_format_definition)
+    if options.output_file:
+#	generator['VMCATCHER_CACHE_DIR_CACHE'] = "/var/lib/one/cache"
+#	generator['VMCATCHER_EVENT_DC_IDENTIFIER'] = "53e3339e-f066-4f98-a44f-3a87548b0031"
+#	generator['VMCATCHER_EVENT_DC_TITLE'] = "EGI-WeNMR"
+#	generator['VMCATCHER_EVENT_DC_DESCRIPTION'] = "EGI-WeNMR-Demo-CESGA"
+#	generator['VMCATCHER_EVENT_TYPE'] = "ExpirePostfix"
+	
+
+	if generator['VMCATCHER_EVENT_TYPE'] == "AvailablePostfix":
+#	    print "Creating templates"####################################DELETE ME: i'm only for check purpouse    
+	    ## check if image is a qcow file or not
+	    imageFile = generator['VMCATCHER_CACHE_DIR_CACHE'] +'/'+generator['VMCATCHER_EVENT_DC_IDENTIFIER'] 
+	    command = "file "+imageFile+" | grep -io qcow &> /dev/null"
+	    if os.system(command) == 0:
+		driver="qcow2"
+	    else:
+		driver="raw"
+
+	    ## create template file for image
+	    s = "NAME = \""+generator['VMCATCHER_EVENT_DC_TITLE']+"\"\n"				+\
+		"PATH = \""+imageFile+"\"\n"								+\
+		"TYPE = OS\n"										+\
+		"DRIVER= "+driver+"\n"									+\
+		"DESCRIPTION = \""+generator['VMCATCHER_EVENT_DC_DESCRIPTION']+"\"\n" 			+\
+		"VMCATCHER_EVENT_DC_IDENTIFIER = \""+generator['VMCATCHER_EVENT_DC_IDENTIFIER']+"\"\n"
+
+	    ## detect if templates directory exists
+	    if not os.path.exists(generator['VMCATCHER_CACHE_DIR_CACHE'] +'/templates'):
+    		os.makedirs(generator['VMCATCHER_CACHE_DIR_CACHE'] +'/templates')
+
+	    templateFile = generator['VMCATCHER_CACHE_DIR_CACHE'] +'/templates' + '/'+generator['VMCATCHER_EVENT_DC_IDENTIFIER']  + ".one"
+	    f = open(templateFile, 'w')
+	    f.write(s)
+	    f.close()
+	    
+	    ## execute image template
+	    command = "oneimage create -d default "+templateFile
+	    os.system(command)
+	elif generator['VMCATCHER_EVENT_TYPE'] == "ExpirePosfix":
+	    # VM Image has expired, 1st detect ON IMAGE ID:
+            # $oneimage list --xml
+	    # search for generator['VMCATCHER_EVENT_DC_IDENTIFIER'] into <VMCATCHER_EVENT_DC_IDENTIFIER><![CDATA[+generator['VMCATCHER_EVENT_DC_IDENTIFIER']+]]></VMCATCHER_EVENT_DC_IDENTIFIER>
+            # command = "oneimage disable "+ON_IMAGE_ID
+	    ON_IMAGE_ID = -1
+	    ON_IMAGE_ID = getExpiredId(generator['VMCATCHER_EVENT_DC_IDENTIFIER'])
+	    if ON_IMAGE_ID != -1:
+		print "ON Image ID: " + ON_IMAGE_ID + " DISABLED."
+	        command = "oneimage disable " + ON_IMAGE_ID
+		os.system(command)
+	else:##########################################DELETE ME: i'm only for check purpouse
+	    print "nothing to do"
+	
+	#print 'oneimage create -d default --name "'+ generator['VMCATCHER_CACHE_ACTION_DOWNLOAD'] +'" --path "'+ generator['VMCATCHER_CACHE_DIR_CACHE'] +'/'+ generator['VMCATCHER_EVENT_DC_IDENTIFIER'] +'" --type OS --driver qcow2 --description your_desc'
+	# oneimage enable or oneimage disable
+	# oneimage create -d default --name "my test image VMCASTER" --path "/home/sunstone/53e3339e-f066-4f98-a44f-3a87548b0031" --type OS --description "A new image generated with VMCASTER"
+        with open(options.output_file, "a") as myfile:
+            json.dump(generator, myfile, sort_keys=True)
+            myfile.write('\n')
+    else:
+        log.info("'--help' for options.")
+if __name__ == "__main__":
+    
+    main()
+
