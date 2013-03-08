@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# USAGE: python vmcatcher_eventHndlExpl_ON --output_file=kk --datetime
+# USAGE: python vmcatcher_eventHndlExpl_ON --output_file=foo.tmp --datetime
 import sys
 if sys.version_info < (2, 4):
     print "Your python interpreter is too old. Please consider upgrading."
@@ -84,9 +84,6 @@ def getExpiredId(vmcatcherId):
                 	for cId in catcherId:
 				catcherId = cId.toxml().replace('<VMCATCHER_EVENT_DC_IDENTIFIER>','').replace('</VMCATCHER_EVENT_DC_IDENTIFIER>','').replace('<![CDATA[','').replace(']]>','')
 				if catcherId == vmcatcherId:
-#					print "encontrada una imagen para borrar:"####################################DELETE ME: i'm only for check purpouse
-#					print "id: "+imageId####################################DELETE ME: i'm only for check purpouse
-#					print "catcherId: "+catcherId####################################DELETE ME: i'm only for check purpouse
 					return imageId			
 
  
@@ -120,15 +117,7 @@ def main():
     if options.datetime:
         generator['DATETIME'] = datetime.datetime.now().strftime(time_format_definition)
     if options.output_file:
-#	generator['VMCATCHER_CACHE_DIR_CACHE'] = "/var/lib/one/cache"
-#	generator['VMCATCHER_EVENT_DC_IDENTIFIER'] = "53e3339e-f066-4f98-a44f-3a87548b0031"
-#	generator['VMCATCHER_EVENT_DC_TITLE'] = "EGI-WeNMR"
-#	generator['VMCATCHER_EVENT_DC_DESCRIPTION'] = "EGI-WeNMR-Demo-CESGA"
-#	generator['VMCATCHER_EVENT_TYPE'] = "ExpirePostfix"
-	
-
 	if generator['VMCATCHER_EVENT_TYPE'] == "AvailablePostfix":
-#	    print "Creating templates"####################################DELETE ME: i'm only for check purpouse    
 	    ## check if image is a qcow file or not
 	    imageFile = generator['VMCATCHER_CACHE_DIR_CACHE'] +'/'+generator['VMCATCHER_EVENT_DC_IDENTIFIER'] 
 	    command = "file "+imageFile+" | grep -io qcow &> /dev/null"
@@ -168,10 +157,7 @@ def main():
 		print "ON Image ID: " + ON_IMAGE_ID + " DISABLED."
 	        command = "oneimage disable " + ON_IMAGE_ID
 		os.system(command)
-	else:##########################################DELETE ME: i'm only for check purpouse
-	    print "nothing to do"
 	
-	#print 'oneimage create -d default --name "'+ generator['VMCATCHER_CACHE_ACTION_DOWNLOAD'] +'" --path "'+ generator['VMCATCHER_CACHE_DIR_CACHE'] +'/'+ generator['VMCATCHER_EVENT_DC_IDENTIFIER'] +'" --type OS --driver qcow2 --description your_desc'
 	# oneimage enable or oneimage disable
 	# oneimage create -d default --name "my test image VMCASTER" --path "/home/sunstone/53e3339e-f066-4f98-a44f-3a87548b0031" --type OS --description "A new image generated with VMCASTER"
         with open(options.output_file, "a") as myfile:
