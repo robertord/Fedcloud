@@ -158,8 +158,6 @@ def main():
 	        command = "oneimage disable " + ON_IMAGE_ID
 		os.system(command)
 	
-	# oneimage enable or oneimage disable
-	# oneimage create -d default --name "my test image VMCASTER" --path "/home/sunstone/53e3339e-f066-4f98-a44f-3a87548b0031" --type OS --description "A new image generated with VMCASTER"
         with open(options.output_file, "a") as myfile:
             json.dump(generator, myfile, sort_keys=True)
             myfile.write('\n')
