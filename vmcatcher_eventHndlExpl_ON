@@ -16,9 +16,10 @@ except:
     import json
 import time
 import datetime
-
-import xml.dom.minidom
-from xml.dom.minidom import Node
+from xml.dom import Node
+from xml.dom import minidom
+from string import Template
+import commands
 
 
 time_format_definition = "%Y-%m-%dT%H:%M:%SZ"
@@ -68,12 +69,7 @@ def nullEnvDict(enviromentDict = generateEnvDict(),NullValue = ""):
         FoundEnviroment[item] = NullValue
     return FoundEnviroment
   
- 
-def getExpiredId(vmcatcherId):
-	command = "oneimage list --xml>/tmp/onelist.tmp"
-	xmlresult = os.system(command)
-	xmldoc = xml.dom.minidom.parse("/tmp/onelist.tmp")
-
+def getExpiredId(xmldoc,vmcatcherId):
 	for node in xmldoc.getElementsByTagName("IMAGE"):
 	        idList = node.getElementsByTagName("ID")
 	        for id in idList:
@@ -92,10 +88,10 @@ def main():
     sys.setdefaultencoding('utf-8')
     log = logging.getLogger("main")
     p = optparse.OptionParser(version = "%prog " + "0.0.1")    
-    p.add_option('--output_file', action ='store',help='Output file to log event.', metavar='OUTPUT_LOGFILE')
     p.add_option('--generator',  action ='store',help='Set the dictionary Generator.', metavar='minium')
-    p.add_option('--datetime',  action ='store_true',help='Add a datetime stamp.')
-    
+    p.add_option('--verbose', action ='count',help='Change global log level, increasing log output.', metavar='LOGFILE')
+    p.add_option('--quiet', action ='count',help='Change global log level, decreasing log output.', metavar='LOGFILE')
+    p.add_option('--log-config', action ='store',help='Logfile configuration file, (overrides command line).', metavar='LOGFILE')
     p.add_option('--logcfg', action ='store',help='Logfile configuration file.', metavar='LOGCFGFILE')
     
     options, arguments = p.parse_args()
@@ -111,59 +107,116 @@ def main():
         logging.basicConfig(level=logging.INFO)    
     outputDict = None
     generator = nullEnvDict()
+    databaseConnectionString = None
+    certDir = None
+    logFile = None
+
+    if 'VMCATCHER_RDBMS' in os.environ:
+        databaseConnectionString = os.environ['VMCATCHER_RDBMS']
+    if 'VMCATCHER_LOG_CONF' in os.environ:
+        logFile = os.environ['VMCATCHER_LOG_CONF']
+    if 'VMCATCHER_DIR_CERT' in os.environ:
+        certDir = os.environ['VMCATCHER_DIR_CERT']
+    
+    # Set up log file
+    LoggingLevel = logging.WARNING
+    LoggingLevelCounter = 2
+    if options.verbose:
+        LoggingLevelCounter = LoggingLevelCounter - options.verbose
+        if options.verbose == 1:
+            LoggingLevel = logging.INFO
+        if options.verbose == 2:
+            LoggingLevel = logging.DEBUG
+    if options.quiet:
+        LoggingLevelCounter = LoggingLevelCounter + options.quiet
+    if LoggingLevelCounter <= 0:
+        LoggingLevel = logging.DEBUG
+    if LoggingLevelCounter == 1:
+        LoggingLevel = logging.INFO
+    if LoggingLevelCounter == 2:
+        LoggingLevel = logging.WARNING
+    if LoggingLevelCounter == 3:
+        LoggingLevel = logging.ERROR
+    if LoggingLevelCounter == 4:
+        LoggingLevel = logging.FATAL
+    if LoggingLevelCounter >= 5:
+        LoggingLevel = logging.CRITICAL
+    
+    if options.log_config:
+        logFile = options.log_config
+    if logFile != None:
+        if os.path.isfile(str(options.log_config)):
+            logging.config.fileConfig(options.log_config)
+        else:
+            logging.basicConfig(level=LoggingLevel)
+            log = logging.getLogger("main")
+            log.error("Logfile configuration file '%s' was not found." % (options.log_config))
+            sys.exit(1)
+    else:
+        
+        logging.basicConfig(level=LoggingLevel)
+    log = logging.getLogger("main")
+    
     if options.generator:
         if options.generator == "minium":
             generator = generateEnvDict()
-    if options.datetime:
-        generator['DATETIME'] = datetime.datetime.now().strftime(time_format_definition)
-    if options.output_file:
-	if generator['VMCATCHER_EVENT_TYPE'] == "AvailablePostfix":
-	    ## check if image is a qcow file or not
-	    imageFile = generator['VMCATCHER_CACHE_DIR_CACHE'] +'/'+generator['VMCATCHER_EVENT_DC_IDENTIFIER'] 
-	    command = "file "+imageFile+" | grep -io qcow &> /dev/null"
-	    if os.system(command) == 0:
-		driver="qcow2"
-	    else:
-		driver="raw"
 
-	    ## create template file for image
-	    s = "NAME = \""+generator['VMCATCHER_EVENT_DC_TITLE']+"\"\n"				+\
-		"PATH = \""+imageFile+"\"\n"								+\
-		"TYPE = OS\n"										+\
-		"DRIVER= "+driver+"\n"									+\
-		"DESCRIPTION = \""+generator['VMCATCHER_EVENT_DC_DESCRIPTION']+"\"\n" 			+\
-		"VMCATCHER_EVENT_DC_IDENTIFIER = \""+generator['VMCATCHER_EVENT_DC_IDENTIFIER']+"\"\n"
-
-	    ## detect if templates directory exists
-	    if not os.path.exists(generator['VMCATCHER_CACHE_DIR_CACHE'] +'/templates'):
-    		os.makedirs(generator['VMCATCHER_CACHE_DIR_CACHE'] +'/templates')
-
-	    templateFile = generator['VMCATCHER_CACHE_DIR_CACHE'] +'/templates' + '/'+generator['VMCATCHER_EVENT_DC_IDENTIFIER']  + ".one"
-	    f = open(templateFile, 'w')
-	    f.write(s)
-	    f.close()
+    if generator['VMCATCHER_EVENT_TYPE'] == "AvailablePostfix":
+	## check if image is a qcow file or not
+	imageFile = generator['VMCATCHER_CACHE_DIR_CACHE'] +'/'+generator['VMCATCHER_EVENT_DC_IDENTIFIER'] 
+	command = "file "+imageFile+" | grep -io qcow &> /dev/null"
+	if os.system(command) == 0:
+	    driver="qcow2"
+	    log.info("Image is qcow2 format")
+	else:
+	    driver="raw"
+	    log.info("Image is raw format")
 	    
-	    ## execute image template
-	    command = "oneimage create -d default "+templateFile
-	    os.system(command)
-	elif generator['VMCATCHER_EVENT_TYPE'] == "ExpirePosfix":
-	    # VM Image has expired, 1st detect ON IMAGE ID:
-            # $oneimage list --xml
-	    # search for generator['VMCATCHER_EVENT_DC_IDENTIFIER'] into <VMCATCHER_EVENT_DC_IDENTIFIER><![CDATA[+generator['VMCATCHER_EVENT_DC_IDENTIFIER']+]]></VMCATCHER_EVENT_DC_IDENTIFIER>
-            # command = "oneimage disable "+ON_IMAGE_ID
-	    ON_IMAGE_ID = -1
-	    ON_IMAGE_ID = getExpiredId(generator['VMCATCHER_EVENT_DC_IDENTIFIER'])
-	    if ON_IMAGE_ID != -1:
-		print "ON Image ID: " + ON_IMAGE_ID + " DISABLED."
-	        command = "oneimage disable " + ON_IMAGE_ID
+	s = Template(
+			"NAME = \"$name\"\n"				+\
+			"PATH = \"$path\"\n"				+\
+			"TYPE = OS\n"					+\
+			"DRIVER= $imageType\n"				+\
+			"DESCRIPTION = \"$descrip\"\n" 			+\
+			"VMCATCHER_EVENT_DC_IDENTIFIER = \"$dcId\"\n"	
+		    )
+	tFile=s.substitute(
+			    name=generator['VMCATCHER_EVENT_DC_TITLE'], 		\
+			    path=imageFile,						\
+			    imageType=driver,						\
+			    descrip=generator['VMCATCHER_EVENT_DC_DESCRIPTION'],	\
+			    dcId=generator['VMCATCHER_EVENT_DC_IDENTIFIER']		
+			   )
+
+	## detect if templates directory exists
+	if not os.path.exists(generator['VMCATCHER_CACHE_DIR_CACHE'] +'/templates'):
+	    os.makedirs(generator['VMCATCHER_CACHE_DIR_CACHE'] +'/templates')
+	    log.info("Templates dir doesn't exist, creating")
+
+	templateFile = generator['VMCATCHER_CACHE_DIR_CACHE'] +'/templates' + '/'+generator['VMCATCHER_EVENT_DC_IDENTIFIER']  + ".one"
+	log.info("Creating template file "+templateFile)
+	f = open(templateFile, 'w')
+	f.write(tFile)
+	f.close()
+	    
+	## execute image template
+	command = "oneimage create -d default "+templateFile
+	log.info("Instantiating template: "+command)
+	os.system(command)
+    elif generator['VMCATCHER_EVENT_TYPE'] == "ExpirePosfix":
+	ON_IMAGE_ID = -1
+        command = "oneimage list --xml"
+        status, result = commands.getstatusoutput(command)
+        log.info("Getting image list: "+command)
+        xmldoc = minidom.parseString(result)
+	ON_IMAGE_ID = getExpiredId(xmldoc,generator['VMCATCHER_EVENT_DC_IDENTIFIER'])
+	if ON_IMAGE_ID != -1:
+		command = "oneimage disable " + ON_IMAGE_ID
+		log.info("Disabling image detected as expired: "+command)
 		os.system(command)
 	
-        with open(options.output_file, "a") as myfile:
-            json.dump(generator, myfile, sort_keys=True)
-            myfile.write('\n')
-    else:
-        log.info("'--help' for options.")
+	log.info(json.dumps(generator))
+
 if __name__ == "__main__":
-    
     main()
 
