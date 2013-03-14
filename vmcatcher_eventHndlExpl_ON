@@ -203,7 +203,7 @@ def main():
 	command = "oneimage create -d default "+templateFile
 	log.info("Instantiating template: "+command)
 	os.system(command)
-    elif generator['VMCATCHER_EVENT_TYPE'] == "ExpirePosfix":
+    if generator['VMCATCHER_EVENT_TYPE'] == "ExpirePosfix":
 	ON_IMAGE_ID = -1
         command = "oneimage list --xml"
         status, result = commands.getstatusoutput(command)
