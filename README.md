@@ -1,27 +1,5 @@
-FEDCLOUD DEMO FOR EGI TECHNICAL FORUM
-======================================
+NOTICE
+======
 
-For run this script you must install:
-- python
-- StratusLab client tools 
-The instructions for this are on the webpage https://wiki.egi.eu/wiki/Fedcloud-tf:WorkGroups:VM_Marketplace#Register_an_image_with_the_EGI.eu_Marketplace. 
-They point to the tar.gz, but there are also RPMs available in the yum repositories, see http://yum.stratuslab.eu/
-
-Before run it you must configure certpath and capath variables in script
- - certpath="~/.globus"
- - capath="/etc/grid-security/certificates"
-
-Usage:
- - $python fedcloud.py http://marketplace.egi.eu
- - $./fedcloud.py http://marketplace.egi.eu 
-
-For debug purposes:
- - $python fedcloud.py http://marketplace.egi.eu --debug
- - $./fedcloud.py http://marketplace.egi.eu --debug
-
-For untrusted hosts certificates:
- - $python fedcloud.py http://marketplace.egi.eu --insecure=<site1,site2,site3,...>
- - $./fedcloud.py http://marketplace.egi.eu --insecure=<site1,site2,site3,...>
-
-Example: 
-python fedcloud.py http://marketplace.egi.eu --insecure=kth.se,cesga --debug
+This repository could not be updated, please refer to CESGA grid-admin repository:
+https://github.com/grid-admin/cloud
